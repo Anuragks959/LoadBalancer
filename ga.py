@@ -72,9 +72,9 @@ def crossover(par1, par2):
 
 
 def getrndserver(i):
-    rt = random.randint(0, servers)
+    rt = random.randint(0, servers-1)
     while rt == i:
-        rt = random.randint(0, servers)
+        rt = random.randint(0, servers-1)
     return rt
 
 
@@ -92,7 +92,7 @@ def mutation2(off):
 
 def geneticAlgo(ip):
     population = ip.copy()
-    generations = 400
+    generations = 10
     for i in range(generations + 1):
         a, b = pick_parent_candidates(population)
         oa, ob = crossover(a, b)
