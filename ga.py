@@ -6,16 +6,17 @@ from random import choices
 
 import flask
 
+import uncurl
+
 app = Flask(__name__)
 
 serverName = "GA-server"
 
-global servers
 servers = 5
 
-global serverVector
 serverVector = [[10, 55], [2, 10], [5, 30], [7, 40], [5, 30]]
 
+nicArray = []
 
 # MIPS, CostOfOperation
 
@@ -39,7 +40,7 @@ def fitness(soln):
     # requests=
     fitvalue = 0
     for itr in range(n):
-        nic = random.randint(1, 5)
+        nic = nicArray[itr]
         fitvalue += serverVector[soln[itr]][1] * nic / serverVector[soln[itr]][0]
     return fitvalue
 
@@ -116,9 +117,17 @@ def hello():
 def batchProcess():
     g = flask.request
     body = g.get_json()
-    n = len(body['batch'])
+    reqs = body['batch']
+    n = len(reqs)
+    global nicArray
+    for curl in reqs:
+        parseCurl = uncurl.parse_context(curl) #-- get header
+        nic = (parseCurl.headers)['nic']
+        nicArray.append(float(nic))
     initPop = ransol(n)
-    return json.dumps(geneticAlgo(initPop))
+    tbr = json.dumps(geneticAlgo(initPop))
+    nicArray = []
+    return tbr
 
 
 if __name__ == '__main__':
