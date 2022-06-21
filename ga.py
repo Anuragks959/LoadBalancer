@@ -16,6 +16,8 @@ servers = 5
 
 serverVector = [[10, 55], [2, 10], [5, 30], [7, 40], [5, 30]]
 
+serversList = ["http://127.0.0.1:5001","http://127.0.0.1:5002","http://127.0.0.1:5003","http://127.0.0.1:5004","http://127.0.0.1:5005"]
+
 nicArray = []
 
 # MIPS, CostOfOperation
