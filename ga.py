@@ -116,11 +116,12 @@ def getResponses(curls, assignment):
     for i in range(len(curls)):
         curl = curls[i]
         rawReq = uncurl.parse_context(curl)
+        nic = (rawReq.headers)['nic']
         serverUrl = serversList[assignment[i]]
         destUrlAssign = serverUrl + rawReq.url
         resp = None
         try:
-            resp = str(requests.get(destUrlAssign))
+            resp = str(requests.get(destUrlAssign, headers={'nic':nic}))
         except Exception:
             resp = str(Exception)
 
