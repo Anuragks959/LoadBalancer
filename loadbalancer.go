@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 )
@@ -33,13 +32,14 @@ func forwardRequest(res http.ResponseWriter, req *http.Request) {
 }
 
 func getHealthyServer() (*server, error) {
-	for i := 0; i < len(serverList); i++ {
+	return newServer("algorithms", "http://127.0.0.1:5050"), nil
+	/*for i := 0; i < len(serverList); i++ {
 		server := getServer()
 		if server.Health {
 			return server, nil
 		}
 	}
-	return nil, fmt.Errorf("No healthy hosts")
+	return nil, fmt.Errorf("No healthy hosts")*/
 }
 
 func getServer() *server {

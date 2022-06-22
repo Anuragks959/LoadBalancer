@@ -10,7 +10,7 @@ import (
 func startHealthCheck() {
 	s := gocron.NewScheduler(time.Local)
 	for _, host := range serverList {
-		_, err := s.Every(2).Seconds().Do(func(s *server) {
+		_, err := s.Every(30).Seconds().Do(func(s *server) {
 			healthy := s.checkHealth()
 			if !healthy {
 				log.Printf("'%s' is not healthy", s.Name)
