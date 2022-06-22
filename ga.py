@@ -1,5 +1,5 @@
 import json
-
+import requests
 from flask import Flask, jsonify, request
 import random
 from random import choices
@@ -34,12 +34,8 @@ def ransol(n):
     return l
 
 
-# def fitness(ind):
-#     return random.randint(0, 100)
-
 def fitness(soln):
     n = len(soln)
-    # requests=
     fitvalue = 0
     for itr in range(n):
         nic = nicArray[itr]
@@ -115,6 +111,24 @@ def hello():
     return serverName
 
 
+def getResponses(curls, assignment):
+    responses=[]
+    for i in range(len(curls)):
+        curl = curls[i]
+        rawReq = uncurl.parse_context(curl)
+        serverUrl = serversList[assignment[i]]
+        destUrlAssign = serverUrl + rawReq.url
+        resp = None
+        try:
+            resp = str(requests.get(destUrlAssign))
+        except Exception:
+            resp = str(Exception)
+
+        responses.append(resp)
+
+    return responses
+
+
 @app.route('/batch', methods=['POST'])
 def batchProcess():
     g = flask.request
@@ -127,9 +141,12 @@ def batchProcess():
         nic = (parseCurl.headers)['nic']
         nicArray.append(float(nic))
     initPop = ransol(n)
-    tbr = json.dumps(geneticAlgo(initPop))
+    assignment = geneticAlgo(initPop)
+
+    responseArray = getResponses(body['batch'], assignment)
+
     nicArray = []
-    return tbr
+    return json.dumps(responseArray)
 
 
 if __name__ == '__main__':
