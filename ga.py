@@ -28,6 +28,9 @@ nicArray = []
 responseArray = []
 # MIPS, CostOfOperation
 
+selectedAlgo = "rr"
+#ga/rr/wrr/ran/wrt for genetic-algo/round-robin/weighted-rr/random/weighted-least-response-time
+
 def ransol(n):
     popSize = 10
     l = []
@@ -46,7 +49,7 @@ def fitness(soln):
     for itr in range(n):
         nic = nicArray[itr]
         fitvalue += (serverVector[soln[itr]][1] * nic) / serverVector[soln[itr]][0]
-    return normalizationFactor-fitvalue
+    return (1-fitvalue/normalizationFactor)*100
 
 
 def pick_parent_candidates(g):
@@ -165,12 +168,16 @@ def batchProcess():
         nic = (parseCurl.headers)['nic']
         nicArray.append(float(nic))
     initiateNormalFactor()
-    initPop = ransol(n)
-    assignment = geneticAlgo(initPop)
+    if(selectedAlgo == "ga"):
+        initPop = ransol(n)
+        assignment = geneticAlgo(initPop)
 
-    # responseArray = getResponses(body['batch'], assignment)
-    asyncio.run(getResponses(body['batch'], assignment))
-    # responseArray =asyncio.run(reqCall(body['batch'], assignment))
+        # responseArray = getResponses(body['batch'], assignment)
+        asyncio.run(getResponses(body['batch'], assignment))
+        # responseArray =asyncio.run(reqCall(body['batch'], assignment))
+    
+    if(selectedAlgo == "rr"):
+        asyncio.run(roundRobin(body['batch']))
 
     nicArray = []
 
@@ -179,6 +186,24 @@ def batchProcess():
 
     return json.dumps(tbr)
 
+async def roundRobin(curls):
+    global responseArray
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        lastIndex = -1
+        for i in range(len(curls)):
+            curl = curls[i]
+            rawReq = uncurl.parse_context(curl)
+            nic = (rawReq.headers)['nic']
+            nextIndex = (lastIndex+1)%servers
+            serverUrl = serversList[nextIndex]
+            lastIndex = nextIndex
+            destUrlAssign = serverUrl + rawReq.url
+            tasks.append(asyncio.ensure_future(getResponse(session,destUrlAssign,nic)))
+
+        original_pokemon = await asyncio.gather(*tasks)
+        for pokemon in original_pokemon:
+            responseArray.append(pokemon)
 
 if __name__ == '__main__':
     app.run(port=5050)
