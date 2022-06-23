@@ -3,6 +3,9 @@ import requests
 from flask import Flask, jsonify, request
 import random
 from random import choices
+import asyncio
+
+import aiohttp
 
 import flask
 
@@ -14,12 +17,15 @@ serverName = "GA-server"
 
 servers = 5
 
-serverVector = [[10, 55], [2, 10], [5, 30], [7, 40], [5, 30]]
+serverVector = [[10, 2000], [2, 1500], [3, 1700], [7, 1600], [5, 800]]
 
 serversList = ["http://127.0.0.1:5001","http://127.0.0.1:5002","http://127.0.0.1:5003","http://127.0.0.1:5004","http://127.0.0.1:5005"]
 
+normalizationFactor = 100000000
+
 nicArray = []
 
+responseArray = []
 # MIPS, CostOfOperation
 
 def ransol(n):
@@ -39,8 +45,8 @@ def fitness(soln):
     fitvalue = 0
     for itr in range(n):
         nic = nicArray[itr]
-        fitvalue += serverVector[soln[itr]][1] * nic / serverVector[soln[itr]][0]
-    return fitvalue
+        fitvalue += (serverVector[soln[itr]][1] * nic) / serverVector[soln[itr]][0]
+    return normalizationFactor-fitvalue
 
 
 def pick_parent_candidates(g):
@@ -91,7 +97,7 @@ def mutation2(off):
 
 def geneticAlgo(ip):
     population = ip.copy()
-    generations = 10
+    generations = 100
     for i in range(generations + 1):
         a, b = pick_parent_candidates(population)
         oa, ob = crossover(a, b)
@@ -110,25 +116,41 @@ def geneticAlgo(ip):
 def hello():
     return serverName
 
+async def getResponse(session,destUrlAssign,nic):
+    async with session.get(destUrlAssign, headers={'nic':nic}) as resp:
+        pokemon = await resp.read()
+        my_json = pokemon.decode('utf8')
+        hashrate = json.dumps(my_json)
+        return hashrate
 
-def getResponses(curls, assignment):
-    responses=[]
-    for i in range(len(curls)):
-        curl = curls[i]
-        rawReq = uncurl.parse_context(curl)
-        nic = (rawReq.headers)['nic']
-        serverUrl = serversList[assignment[i]]
-        destUrlAssign = serverUrl + rawReq.url
-        resp = None
-        try:
-            resp = str(requests.get(destUrlAssign, headers={'nic':nic}))
-        except Exception:
-            resp = str(Exception)
+async def getResponses(curls, assignment):
+    global responseArray
 
-        responses.append(resp)
+    async with aiohttp.ClientSession() as session:
 
-    return responses
+        tasks = []
+        
+        for i in range(len(curls)):
+            curl = curls[i]
+            rawReq = uncurl.parse_context(curl)
+            nic = (rawReq.headers)['nic']
+            serverUrl = serversList[assignment[i]]
+            destUrlAssign = serverUrl + rawReq.url
+            tasks.append(asyncio.ensure_future(getResponse(session,destUrlAssign,nic)))
+            # tasks.append(loop.create_task(getResponse(destUrlAssign,nic)))#requests.get(destUrlAssign, headers={'nic':nic})))
 
+        original_pokemon = await asyncio.gather(*tasks)
+        for pokemon in original_pokemon:
+            responseArray.append(pokemon)
+
+def initiateNormalFactor():
+    v = 0
+    global nicArray
+    maxNic=max(nicArray)
+    for svr in serverVector:
+        v += svr[1]*(maxNic+1)
+    global normalizationFactor
+    normalizationFactor=max([v,normalizationFactor])
 
 @app.route('/batch', methods=['POST'])
 def batchProcess():
@@ -137,17 +159,25 @@ def batchProcess():
     reqs = body['batch']
     n = len(reqs)
     global nicArray
+    global responseArray
     for curl in reqs:
         parseCurl = uncurl.parse_context(curl) #-- get header
         nic = (parseCurl.headers)['nic']
         nicArray.append(float(nic))
+    initiateNormalFactor()
     initPop = ransol(n)
     assignment = geneticAlgo(initPop)
 
-    responseArray = getResponses(body['batch'], assignment)
+    # responseArray = getResponses(body['batch'], assignment)
+    asyncio.run(getResponses(body['batch'], assignment))
+    # responseArray =asyncio.run(reqCall(body['batch'], assignment))
 
     nicArray = []
-    return json.dumps(responseArray)
+
+    tbr = responseArray.copy()
+    responseArray = []
+
+    return json.dumps(tbr)
 
 
 if __name__ == '__main__':
