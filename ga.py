@@ -21,6 +21,7 @@ serverVector = [[10, 2000], [2, 1500], [3, 1700], [7, 1600], [5, 800]]
 
 serversList = ["http://127.0.0.1:5001","http://127.0.0.1:5002","http://127.0.0.1:5003","http://127.0.0.1:5004","http://127.0.0.1:5005"]
 
+serverWeights = [3, 1, 1, 2, 2]
 normalizationFactor = 100000000
 
 nicArray = []
@@ -178,6 +179,10 @@ def batchProcess():
     
     if(selectedAlgo == "rr"):
         asyncio.run(roundRobin(body['batch']))
+    if(selectedAlgo == "wrr"):
+        asyncio.run(weightedRoundRobin(body['batch']))
+    if(selectedAlgo == "ran"):
+        asyncio.run(randomAssign(body['batch']))
 
     nicArray = []
 
@@ -198,6 +203,48 @@ async def roundRobin(curls):
             nextIndex = (lastIndex+1)%servers
             serverUrl = serversList[nextIndex]
             lastIndex = nextIndex
+            destUrlAssign = serverUrl + rawReq.url
+            tasks.append(asyncio.ensure_future(getResponse(session,destUrlAssign,nic)))
+
+        original_pokemon = await asyncio.gather(*tasks)
+        for pokemon in original_pokemon:
+            responseArray.append(pokemon)
+
+async def weightedRoundRobin(curls):
+    global responseArray
+    weightedAssign = []
+    newServers = 0
+    for i in range(servers):
+        for j in range(serverWeights[i]):
+            weightedAssign.append(i)
+            newServers+=1
+
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        lastIndex = -1
+        for i in range(len(curls)):
+            curl = curls[i]
+            rawReq = uncurl.parse_context(curl)
+            nic = (rawReq.headers)['nic']
+            nextIndex = (lastIndex+1)%newServers
+            serverUrl = serversList[weightedAssign[nextIndex]]
+            lastIndex = nextIndex
+            destUrlAssign = serverUrl + rawReq.url
+            tasks.append(asyncio.ensure_future(getResponse(session,destUrlAssign,nic)))
+
+        original_pokemon = await asyncio.gather(*tasks)
+        for pokemon in original_pokemon:
+            responseArray.append(pokemon)
+
+async def randomAssign(curls):
+    global responseArray
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for i in range(len(curls)):
+            curl = curls[i]
+            rawReq = uncurl.parse_context(curl)
+            nic = (rawReq.headers)['nic']
+            serverUrl = serversList[random.randint(0,4)]
             destUrlAssign = serverUrl + rawReq.url
             tasks.append(asyncio.ensure_future(getResponse(session,destUrlAssign,nic)))
 
